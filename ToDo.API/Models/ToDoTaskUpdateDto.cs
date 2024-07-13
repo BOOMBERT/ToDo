@@ -3,7 +3,7 @@ using ToDo.API.Enums;
 
 namespace ToDo.API.Models
 {
-    public class ToDoTaskCreationDto
+    public class ToDoTaskUpdateDto
     {
         [StringLength(50, MinimumLength = 1)]
         public required string Title { get; set; }
@@ -11,10 +11,12 @@ namespace ToDo.API.Models
         [MaxLength(200)]
         public string? Description { get; set; }
 
+        public bool Completed { get; set; }
+
         [EnumDataType(typeof(PriorityLevel))]
         public required PriorityLevel Priority { get; set; }
-        
+
         [DataType(DataType.DateTime, ErrorMessage = "Due date must be a valid date and time")]
-        public required DateTime DueDate { get; set; } 
+        public required DateTime DueDate { get; set; }
     }
 }
