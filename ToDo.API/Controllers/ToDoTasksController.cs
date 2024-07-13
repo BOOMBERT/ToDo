@@ -101,4 +101,19 @@ public class ToDoTasksController : ControllerBase
 
         return NoContent();
     }
+
+    [HttpDelete("{id}")]
+    public ActionResult DeleteTask(int id) 
+    {
+        var taskToDelete = ToDoTasksDataStore.Current.ToDoTasks.FirstOrDefault(t => t.Id == id);
+
+        if (taskToDelete == null)
+        {
+            return NotFound();
+        }
+
+        ToDoTasksDataStore.Current.ToDoTasks.Remove(taskToDelete);
+
+        return NoContent();
+    }
 }
