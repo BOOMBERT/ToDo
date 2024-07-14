@@ -8,16 +8,23 @@ namespace ToDo.API.Controllers;
 [Route("api/tasks")]
 public class ToDoTasksController : ControllerBase
 {
+    private readonly ToDoTasksDataStore _toDoTasksDataStore;
+
+    public ToDoTasksController(ToDoTasksDataStore toDoTasksDataStore)
+    {
+        _toDoTasksDataStore = toDoTasksDataStore ?? throw new ArgumentNullException(nameof(toDoTasksDataStore));
+    }
+
     [HttpGet]
     public ActionResult<IEnumerable<ToDoTaskDto>> GetTasks()
     {
-        return Ok(ToDoTasksDataStore.Current.ToDoTasks);
+        return Ok(_toDoTasksDataStore.ToDoTasks);
     }
 
     [HttpGet("{id}", Name = "GetTask")]
     public ActionResult<ToDoTaskDto> GetTask(int id)
     {
-        var taskToReturn = ToDoTasksDataStore.Current.ToDoTasks
+        var taskToReturn = _toDoTasksDataStore.ToDoTasks
             .FirstOrDefault(t => t.Id == id);
 
         if (taskToReturn == null)
@@ -31,7 +38,7 @@ public class ToDoTasksController : ControllerBase
     [HttpPost]
     public ActionResult<ToDoTaskDto> CreateTask(ToDoTaskCreationDto toDoTask)
     {
-        var maxTaskId = ToDoTasksDataStore.Current.ToDoTasks.Max(i => i.Id);
+        var maxTaskId = _toDoTasksDataStore.ToDoTasks.Max(i => i.Id);
 
         var finalTask = new ToDoTaskDto()
         {
@@ -43,7 +50,7 @@ public class ToDoTasksController : ControllerBase
             DueDate = toDoTask.DueDate
         };
 
-        ToDoTasksDataStore.Current.ToDoTasks.Add(finalTask);
+        _toDoTasksDataStore.ToDoTasks.Add(finalTask);
 
         return CreatedAtRoute("GetTask", new { finalTask.Id }, finalTask);
     }
@@ -51,7 +58,7 @@ public class ToDoTasksController : ControllerBase
     [HttpPut("{id}")]
     public ActionResult UpdateTask(int id, ToDoTaskUpdateDto toDoTask)
     {
-        var taskToUpdate = ToDoTasksDataStore.Current.ToDoTasks.FirstOrDefault(t => t.Id == id);
+        var taskToUpdate = _toDoTasksDataStore.ToDoTasks.FirstOrDefault(t => t.Id == id);
 
         if (taskToUpdate == null) 
         { 
@@ -70,7 +77,7 @@ public class ToDoTasksController : ControllerBase
     [HttpPatch("{id}")]
     public ActionResult PartiallyUpdateTask(int id, JsonPatchDocument<ToDoTaskUpdateDto> patchDocument)
     {
-        var taskToUpdate = ToDoTasksDataStore.Current.ToDoTasks.FirstOrDefault(t => t.Id == id);
+        var taskToUpdate = _toDoTasksDataStore.ToDoTasks.FirstOrDefault(t => t.Id == id);
 
         if (taskToUpdate == null)
         {
@@ -105,14 +112,14 @@ public class ToDoTasksController : ControllerBase
     [HttpDelete("{id}")]
     public ActionResult DeleteTask(int id) 
     {
-        var taskToDelete = ToDoTasksDataStore.Current.ToDoTasks.FirstOrDefault(t => t.Id == id);
+        var taskToDelete = _toDoTasksDataStore.ToDoTasks.FirstOrDefault(t => t.Id == id);
 
         if (taskToDelete == null)
         {
             return NotFound();
         }
 
-        ToDoTasksDataStore.Current.ToDoTasks.Remove(taskToDelete);
+        _toDoTasksDataStore.ToDoTasks.Remove(taskToDelete);
 
         return NoContent();
     }

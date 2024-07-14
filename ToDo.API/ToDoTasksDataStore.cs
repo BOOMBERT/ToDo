@@ -6,8 +6,6 @@ namespace ToDo.API;
 public class ToDoTasksDataStore
 {
     public List<ToDoTaskDto> ToDoTasks { get; set; }
-    public static ToDoTasksDataStore Current { get; } = new ToDoTasksDataStore();
-
     public ToDoTasksDataStore()
     {
         ToDoTasks = new List<ToDoTaskDto>()
