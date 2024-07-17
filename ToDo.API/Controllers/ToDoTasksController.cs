@@ -1,6 +1,8 @@
-﻿using Microsoft.AspNetCore.JsonPatch;
+﻿using AutoMapper;
+using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using ToDo.API.Models;
+using ToDo.API.Services;
 
 namespace ToDo.API.Controllers;
 
@@ -8,118 +10,97 @@ namespace ToDo.API.Controllers;
 [Route("api/tasks")]
 public class ToDoTasksController : ControllerBase
 {
-    private readonly ToDoTasksDataStore _toDoTasksDataStore;
+    private readonly IToDoTasksRepository _toDoTasksRepository;
+    private readonly IMapper _mapper;
 
-    public ToDoTasksController(ToDoTasksDataStore toDoTasksDataStore)
+    public ToDoTasksController(IToDoTasksRepository toDoTasksRepository, IMapper mapper)
     {
-        _toDoTasksDataStore = toDoTasksDataStore ?? throw new ArgumentNullException(nameof(toDoTasksDataStore));
+        _toDoTasksRepository = toDoTasksRepository ?? throw new ArgumentNullException(nameof(toDoTasksRepository));
+        _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
     }
 
     [HttpGet]
-    public ActionResult<IEnumerable<ToDoTaskDto>> GetTasks()
+    public async Task<ActionResult<IEnumerable<ToDoTaskDto>>> GetTasks()
     {
-        return Ok(_toDoTasksDataStore.ToDoTasks);
+        var toDoTaskEntities = await _toDoTasksRepository.GetAllTasksAsync();
+        return Ok(_mapper.Map<IEnumerable<ToDoTaskDto>>(toDoTaskEntities));
     }
 
     [HttpGet("{id}", Name = "GetTask")]
-    public ActionResult<ToDoTaskDto> GetTask(int id)
+    public async Task<IActionResult> GetTask(int id)
     {
-        var taskToReturn = _toDoTasksDataStore.ToDoTasks
-            .FirstOrDefault(t => t.Id == id);
-
-        if (taskToReturn == null)
+        var toDoTaskEntity = await _toDoTasksRepository.GetTaskAsync(id);
+        if (toDoTaskEntity == null)
         {
             return NotFound();
         }
 
-        return Ok(taskToReturn);
+        return Ok(_mapper.Map<ToDoTaskDto>(toDoTaskEntity));
     }
 
     [HttpPost]
-    public ActionResult<ToDoTaskDto> CreateTask(ToDoTaskCreationDto toDoTask)
-    {
-        var maxTaskId = _toDoTasksDataStore.ToDoTasks.Max(i => i.Id);
+    public async Task<ActionResult<ToDoTaskDto>> CreateTask(ToDoTaskCreationDto toDoTask)
+    {   
+        var toDoTaskEntity = _mapper.Map<Entities.ToDoTask>(toDoTask);
 
-        var finalTask = new ToDoTaskDto()
-        {
-            Id = ++maxTaskId,
-            Title = toDoTask.Title,
-            Description = toDoTask.Description,
-            Completed = false,
-            Priority = toDoTask.Priority,
-            DueDate = toDoTask.DueDate
-        };
+        await _toDoTasksRepository.AddTaskAsync(toDoTaskEntity);
+        await _toDoTasksRepository.SaveChangesAsync();
 
-        _toDoTasksDataStore.ToDoTasks.Add(finalTask);
+        var createdToDoTaskToReturn = _mapper.Map<ToDoTaskDto>(toDoTaskEntity);
 
-        return CreatedAtRoute("GetTask", new { finalTask.Id }, finalTask);
+        return CreatedAtRoute("GetTask", new { createdToDoTaskToReturn.Id }, createdToDoTaskToReturn);
     }
 
     [HttpPut("{id}")]
-    public ActionResult UpdateTask(int id, ToDoTaskUpdateDto toDoTask)
+    public async Task<ActionResult> UpdateTask(int id, ToDoTaskUpdateDto toDoTask)
     {
-        var taskToUpdate = _toDoTasksDataStore.ToDoTasks.FirstOrDefault(t => t.Id == id);
-
-        if (taskToUpdate == null) 
-        { 
-            return NotFound(); 
+        var toDoTaskEntity = await _toDoTasksRepository.GetTaskAsync(id);
+        if (toDoTaskEntity == null)
+        {
+            return NotFound();
         }
 
-        taskToUpdate.Title = toDoTask.Title;
-        taskToUpdate.Description = toDoTask.Description;
-        taskToUpdate.Completed = toDoTask.Completed;
-        taskToUpdate.Priority = toDoTask.Priority;
-        taskToUpdate.DueDate = toDoTask.DueDate;
+        _mapper.Map(toDoTask, toDoTaskEntity);
+        await _toDoTasksRepository.SaveChangesAsync();
 
         return NoContent();
     }
 
     [HttpPatch("{id}")]
-    public ActionResult PartiallyUpdateTask(int id, JsonPatchDocument<ToDoTaskUpdateDto> patchDocument)
+    public async Task<ActionResult> PartiallyUpdateTask(int id, JsonPatchDocument<ToDoTaskUpdateDto> patchDocument)
     {
-        var taskToUpdate = _toDoTasksDataStore.ToDoTasks.FirstOrDefault(t => t.Id == id);
-
-        if (taskToUpdate == null)
+        var toDoTaskEntity = await _toDoTasksRepository.GetTaskAsync(id);
+        if (toDoTaskEntity == null)
         {
             return NotFound();
         }
 
-        var taskToUpdateCopy = new ToDoTaskUpdateDto()
-        {
-            Title = taskToUpdate.Title,
-            Description = taskToUpdate.Description,
-            Completed = taskToUpdate.Completed,
-            Priority = taskToUpdate.Priority,
-            DueDate = taskToUpdate.DueDate
-        };
+        var toDoTaskToPatch = _mapper.Map<ToDoTaskUpdateDto>(toDoTaskEntity);
 
-        patchDocument.ApplyTo(taskToUpdateCopy, ModelState);
-
-        if (!ModelState.IsValid || !TryValidateModel(taskToUpdateCopy))
+        patchDocument.ApplyTo(toDoTaskToPatch, ModelState);
+        
+        if (!ModelState.IsValid || !TryValidateModel(toDoTaskToPatch))
         {
             return BadRequest(ModelState);
         }
 
-        taskToUpdate.Title = taskToUpdateCopy.Title;
-        taskToUpdate.Description = taskToUpdateCopy.Description;
-        taskToUpdate.Completed = taskToUpdateCopy.Completed;
-        taskToUpdate.Priority = taskToUpdateCopy.Priority;
-        taskToUpdate.DueDate = taskToUpdateCopy.DueDate;
+        _mapper.Map(toDoTaskToPatch, toDoTaskEntity);
+        await _toDoTasksRepository.SaveChangesAsync();
 
         return NoContent();
     }
 
     [HttpDelete("{id}")]
-    public ActionResult DeleteTask(int id) 
+    public async Task<ActionResult> DeleteTask(int id)
     {
-        var taskToDelete = _toDoTasksDataStore.ToDoTasks.FirstOrDefault(t => t.Id == id);
-
-        if (taskToDelete == null)
+        var toDoTaskEntity = await _toDoTasksRepository.GetTaskAsync(id);
+        if (toDoTaskEntity == null)
         {
             return NotFound();
         }
 
-        _toDoTasksDataStore.ToDoTasks.Remove(taskToDelete);
+        _toDoTasksRepository.DeleteTask(toDoTaskEntity);
+        await _toDoTasksRepository.SaveChangesAsync();
 
         return NoContent();
     }

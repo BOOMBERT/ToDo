@@ -1,4 +1,6 @@
-using ToDo.API;
+using Microsoft.EntityFrameworkCore;
+using ToDo.API.DbContexts;
+using ToDo.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,7 +15,13 @@ builder.Services.AddProblemDetails();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddSingleton<ToDoTasksDataStore>();
+builder.Services.AddDbContext<ToDoTasksContext>(options 
+    => options.UseSqlite(
+        builder.Configuration["ConnectionStrings:ToDoTasksDBConnectionString"]));
+
+builder.Services.AddScoped<IToDoTasksRepository, ToDoTasksRepository>();
+
+builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
 var app = builder.Build();
 
