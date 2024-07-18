@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
+using ToDo.API.Enums;
 using ToDo.API.Models;
 using ToDo.API.Services;
 
@@ -20,10 +21,24 @@ public class ToDoTasksController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<ToDoTaskDto>>> GetTasks()
+    public async Task<ActionResult<IEnumerable<ToDoTaskDto>>> GetTasks(
+        bool? completed, PriorityLevel? priority, ushort? year, byte? month, byte? day)
     {
-        var toDoTaskEntities = await _toDoTasksRepository.GetAllTasksAsync();
-        return Ok(_mapper.Map<IEnumerable<ToDoTaskDto>>(toDoTaskEntities));
+        try
+        {
+            var toDoTaskEntities = await _toDoTasksRepository.GetAllTasksAsync(completed, priority, year, month, day);
+            return Ok(_mapper.Map<IEnumerable<ToDoTaskDto>>(toDoTaskEntities));
+        }
+        catch (ArgumentException ex) 
+        {
+            return BadRequest(new ProblemDetails
+            { 
+                Status = 400,
+                Title = "The value is not valid.",
+                Detail = ex.Message,
+                Instance = HttpContext.Request.Path
+            });
+        }
     }
 
     [HttpGet("{id}", Name = "GetTask")]
