@@ -15,19 +15,11 @@ namespace ToDo.API.Services
             _context = context ?? throw new ArgumentNullException(nameof(context));
         }
 
-        public async Task<IEnumerable<ToDoTask>> GetAllTasksAsync()
+        public async Task<(IEnumerable<ToDoTask>, PaginationMetadata)> GetAllTasksAsync(
+            bool? completed, PriorityLevel? priority, ushort? year, byte? month, byte? day, 
+            string? searchQuery,
+            int pageNumber, int pageSize)
         {
-            return await _context.ToDoTasks.ToListAsync();
-        }
-
-        public async Task<IEnumerable<ToDoTask>> GetAllTasksAsync(
-            bool? completed, PriorityLevel? priority, ushort? year, byte? month, byte? day)
-        {
-            if (completed == null && priority == null && year == null && month == null && day == null)
-            {
-                return await GetAllTasksAsync();
-            }
-
             var collection = _context.ToDoTasks as IQueryable<ToDoTask>;
 
             if (completed != null)
@@ -76,7 +68,24 @@ namespace ToDo.API.Services
                 }
             }
 
-            return await collection.ToListAsync();
+            if (!string.IsNullOrWhiteSpace(searchQuery))
+            {
+                searchQuery = searchQuery.Trim();
+                collection = collection.Where(t => t.Title.Contains(searchQuery) 
+                || (t.Description != null && t.Description.Contains(searchQuery)));
+            }
+
+            var totalItemCount = await collection.CountAsync();
+
+            var paginationMetadata = new PaginationMetadata(
+                totalItemCount, pageSize, pageNumber);
+
+            var collectionToReturn = await collection.OrderBy(t => t.DueDate)
+                .Skip(pageSize * (pageNumber - 1))
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (collectionToReturn, paginationMetadata);
         }
 
         public async Task<ToDoTask?> GetTaskAsync(int id)

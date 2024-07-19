@@ -5,9 +5,10 @@ namespace ToDo.API.Services
 {
     public interface IToDoTasksRepository
     {
-        Task<IEnumerable<ToDoTask>> GetAllTasksAsync();
-        Task<IEnumerable<ToDoTask>> GetAllTasksAsync(
-            bool? completed, PriorityLevel? priority, ushort? year, byte? month, byte? day
+        Task<(IEnumerable<ToDoTask>, PaginationMetadata)> GetAllTasksAsync(
+            bool? completed, PriorityLevel? priority, ushort? year, byte? month, byte? day, 
+            string? searchQuery,
+            int pageNumber, int pageSize
             );
         Task<ToDoTask?> GetTaskAsync(int id);
         Task AddTaskAsync(ToDoTask toDoTask);

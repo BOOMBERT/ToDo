@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 using ToDo.API.Enums;
 using ToDo.API.Models;
 using ToDo.API.Services;
@@ -13,6 +14,7 @@ public class ToDoTasksController : ControllerBase
 {
     private readonly IToDoTasksRepository _toDoTasksRepository;
     private readonly IMapper _mapper;
+    const int maxToDoTasksPageSize = 20;
 
     public ToDoTasksController(IToDoTasksRepository toDoTasksRepository, IMapper mapper)
     {
@@ -22,11 +24,22 @@ public class ToDoTasksController : ControllerBase
 
     [HttpGet]
     public async Task<ActionResult<IEnumerable<ToDoTaskDto>>> GetTasks(
-        bool? completed, PriorityLevel? priority, ushort? year, byte? month, byte? day)
+        bool? completed, PriorityLevel? priority, ushort? year, byte? month, byte? day, 
+        string? searchQuery,
+        int pageNumber = 1, int pageSize = 10)
     {
+        if (pageSize >  maxToDoTasksPageSize)
+        {
+            pageSize = maxToDoTasksPageSize;
+        }
+
         try
         {
-            var toDoTaskEntities = await _toDoTasksRepository.GetAllTasksAsync(completed, priority, year, month, day);
+            var (toDoTaskEntities, paginationMetadata) = await _toDoTasksRepository.GetAllTasksAsync(
+                completed, priority, year, month, day, searchQuery, pageNumber, pageSize);
+
+            Response.Headers["X-Pagination"] = JsonSerializer.Serialize(paginationMetadata);
+
             return Ok(_mapper.Map<IEnumerable<ToDoTaskDto>>(toDoTaskEntities));
         }
         catch (ArgumentException ex) 
